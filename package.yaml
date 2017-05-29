@@ -1,0 +1,29 @@
+name: s2
+version: '0.1.0.0'
+category: Web
+author: Mike Ledger
+maintainer: mike@quasimal.com
+copyright: 2017 Mike Ledger
+license: MIT
+github: mikeplus64/s2
+extra-source-files:
+- README.md
+library:
+  source-dirs: src
+  exposed-modules:
+  - Text.Html.Nice
+  - Text.Html.Nice.Monad
+  dependencies:
+  - aeson
+  - base >=4.7 && <5
+  - text >=1.2
+  - containers
+  - lens
+  - vector
+  - template-haskell
+  - blaze-html
+  - blaze-markup
+  - recursion-schemes
+  - transformers
+  - free
+  - bifunctors
