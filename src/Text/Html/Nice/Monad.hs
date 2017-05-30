@@ -14,15 +14,25 @@
 module Text.Html.Nice.Monad
   ( -- * Markup
     Markup
+  , FastMarkup
   , runMarkup
+    -- * Compiling
   , compile
-  , render
+    -- * Rendering
+    -- ** Rendering through some monad
   , renderM
   , renderMs
+    -- ** Pure rendering
+  , render
+  , Identity (..)
+    -- * Util
+  , TLB.toLazyText
     -- * Special HTML elements
   , doctype
     -- ** Basic node types
   , node
+  , Attr (..)
+  , attr
   , text
   , unescape
   , dynamic
@@ -30,6 +40,7 @@ module Text.Html.Nice.Monad
     -- ** Combinators
   , nodes
   , branch
+  , Text.Html.Nice.Monad.embed
   , sub
     -- * Useful 'TLB.Builder' functions
   , TLB.decimal
@@ -42,10 +53,12 @@ import           Control.Monad
 import           Control.Monad.Free.Church
 import           Control.Monad.Trans.State.Strict
 import           Data.Bifunctor
+import           Data.Default.Class
+import           Data.Functor.Const
 import           Data.Functor.Foldable
 import           Data.String                      (IsString (..))
 import           Data.Text                        (Text)
-import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy                   as TL
 import qualified Data.Text.Lazy.Builder           as TLB
 import qualified Data.Text.Lazy.Builder.Int       as TLB
 import qualified Data.Text.Lazy.Builder.RealFloat as TLB
@@ -84,6 +97,13 @@ import           Text.Html.Nice
 newtype Markup n a = Markup { unMarkup :: F (Markup'F n) a }
   deriving (Functor, Applicative, Monad, MonadFree (Markup'F n))
 
+instance Default (Markup n a) where
+  def = empty
+
+instance Monoid (Markup n a) where
+  mempty = empty
+  mappend a b = nodes [a, b]
+
 instance IsString (Markup n a) where
   fromString = text . fromString
 
@@ -112,7 +132,7 @@ attr :: MakeNode n a -> [Attr n] -> Markup n a
 attr (N f) a = f a
 
 runMarkup :: Markup n a -> Markup' n
-runMarkup h = runF (unMarkup h) (const Empty) embed
+runMarkup h = runF (unMarkup h) (const Empty) Data.Functor.Foldable.embed
 
 -- | Compile a 'Html' for use with 'render' and its friends.
 --
@@ -163,6 +183,12 @@ empty = liftF EmptyF
 sub :: Markup n a -> Markup (FastMarkup n) a
 sub x = liftF (HoleF Don'tEscape (compile x))
 
+-- | Insert a sub-template.
+embed :: (t -> Markup n a') -> Markup (t -> FastMarkup n) a
+embed f = dynamic (compile . f)
+
+type Getting r s a = (a -> Const r a) -> s -> Const r s
+
 {-# INLINE stream #-}
 stream :: s -> (s -> Maybe s) -> Markup (s -> n) a -> Markup n a
 stream s0 next h =
@@ -174,6 +200,7 @@ stream s0 next h =
             Just s' -> Next s' (fmap (\f -> f s) tpl)
             Nothing -> Done (fmap (\f -> f s) tpl))))
 
+{-# INLINE enum #-}
 enum :: (Ord a, Enum a) => a -> a -> Markup (a -> n) r -> Markup n r
 enum start end = stream start
   (\e -> if e <= end

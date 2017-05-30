@@ -27,3 +27,4 @@ library:
   - transformers
   - free
   - bifunctors
+  - data-default-class

@@ -23,9 +23,13 @@ module Text.Html.Nice
   , FastMarkup
   , compile_
     -- * Rendering
-  , render
+    -- ** Rendering through some monad
   , renderM
   , renderMs
+  , Identity (..)
+    -- ** Pure rendering
+  , render
+    -- * Util
   , TLB.toLazyText
     -- * Internals
   , SomeText (..)
@@ -41,6 +45,7 @@ import           Control.Monad.ST.Strict
 import           Control.Monad.Trans.State.Strict
 import           Data.Bifunctor
 import           Data.Bifunctor.TH
+import           Data.Coerce
 import           Data.Functor.Foldable
 import           Data.Functor.Foldable.TH
 import           Data.Functor.Identity
@@ -98,6 +103,7 @@ data Stream a = forall s. S !s !(s -> Next s (FastMarkup a))
 instance Show (Stream a) where
   show _ = "Stream"
 
+-- | Don't use this! It's a lie!
 instance Eq (Stream a) where
   S _ _ == S _ _ = True
 
@@ -143,9 +149,13 @@ data FastMarkup a
   | FLText TL.Text
   | FSText {-# UNPACK #-} !Text
   | FBuilder !TLB.Builder
-  | FHole !IsEscaped a
+  | FHole !IsEscaped !a
   | FEmpty
   deriving (Show, Eq, Functor, Foldable, Traversable)
+
+instance Monoid (FastMarkup a) where
+  mempty = FBuilder mempty
+  mappend a b = Bunch [a, b]
 
 makeBaseFunctor ''Markup'
 deriveBifunctor ''Markup'F
@@ -218,8 +228,8 @@ fast m = case m of
         ]
   Text DoEscape t -> FBuilder (escape t)
   Text Don'tEscape t -> case t of
-    StrictT a -> FSText a
-    LazyT a -> FLText a
+    StrictT a  -> FSText a
+    LazyT a    -> FLText a
     BuilderT a -> FBuilder a
   List v -> Bunch (V.map fast (V.fromList v))
   Hole e v -> FHole e v
@@ -311,13 +321,13 @@ renderM f = go
             Done x    -> go x
       _ -> return mempty
 
-{-# INLINE render #-}
--- | Render 'FastMarkup' that has no holes.
-render :: FastMarkup Void -> TLB.Builder
-render = runIdentity . renderM absurd
-
 {-# INLINE renderMs #-}
 -- | Render 'FastMarkup' by recursively rendering any sub-markup.
 renderMs :: Monad m => (a -> m (FastMarkup Void)) -> FastMarkup a -> m TLB.Builder
 renderMs f = renderM (f >=> renderMs (f . absurd))
+
+{-# INLINE render #-}
+-- | Render 'FastMarkup' that has no holes.
+render :: FastMarkup Void -> TLB.Builder
+render = runIdentity . renderM absurd
 
