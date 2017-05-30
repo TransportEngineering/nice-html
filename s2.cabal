@@ -1,4 +1,4 @@
--- This file has been generated from package.yaml by hpack version 0.15.0.
+-- This file has been generated from package.yaml by hpack version 0.17.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -11,6 +11,7 @@ author:         Mike Ledger
 maintainer:     mike@quasimal.com
 copyright:      2017 Mike Ledger
 license:        MIT
+license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
 
@@ -35,6 +36,7 @@ library
     , transformers
     , free
     , bifunctors
+    , data-default-class
   exposed-modules:
       Text.Html.Nice
       Text.Html.Nice.Monad
