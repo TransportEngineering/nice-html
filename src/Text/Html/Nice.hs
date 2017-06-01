@@ -20,7 +20,6 @@ module Text.Html.Nice
   , Markup' (..)
   , IsEscaped (..)
     -- * Compilation
-  , FastMarkup
   , compile_
     -- * Rendering
     -- ** Rendering through some monad
@@ -36,6 +35,7 @@ module Text.Html.Nice
   , Stream (..)
   , Next (..)
   , Markup'F (..)
+  , FastMarkup (..)
   , plateFM
   ) where
 import           Control.Monad
@@ -94,46 +94,51 @@ data Markup' a
   | Stream (Stream a)
   | Text !IsEscaped !SomeText
   | Hole !IsEscaped a
-  | Lazy (Markup' a)
   | Empty
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
-data Stream a = forall s. S !s !(s -> Next s (FastMarkup a))
+data Stream a
+  = forall s t. S !s !(s -> Next s t) !(t -> FastMarkup a)
+  | forall s. ListS [s] (s -> FastMarkup a)
 
 instance Show (Stream a) where
   show _ = "Stream"
 
 -- | Don't use this! It's a lie!
 instance Eq (Stream a) where
-  S _ _ == S _ _ = True
+  _ == _ = True
 
 instance Functor Stream where
-  fmap f (S s getNext) = S s (\s' -> fmap (fmap f) (getNext s'))
+  fmap f (S s next fm) = S s next (\s' -> fmap f (fm s'))
+  fmap f (ListS l g) = ListS l (\s -> fmap f (g s))
 
 instance Foldable Stream where
-  foldMap f (S s0 getNext) = go s0
+  foldMap f (S s0 next fm) = go s0
     where
-      go s = case getNext s of
-        Next s1 a -> foldMap f a <> go s1
-        Done a    -> foldMap f a
+      go s = case next s of
+        Next s1 a -> foldMap f (fm a) <> go s1
+        Done a    -> foldMap f (fm a)
+  foldMap f (ListS s fm) = foldMap (foldMap f . fm) s
 
 data List1 a = Cons1 a (List1 a) | Nil1 a
   deriving (Functor, Foldable, Traversable)
 
-streamToList :: (FastMarkup a -> b) -> Stream a -> List1 b
-streamToList f (S s0 getNext) = go s0
+unstream :: (FastMarkup a -> b) -> Stream a -> (b -> c -> c) -> c -> c
+unstream f (S s0 next fm) cons nil = go s0
   where
-    go s = case getNext s of
-      Next s1 a -> Cons1 (f a) (go s1)
-      Done a    -> Nil1 (f a)
+    go s = case next s of
+      Next s1 a -> cons (f (fm a)) (go s1)
+      Done a    -> cons (f (fm a)) nil
+unstream f (ListS l fm) cons nil = go l
+  where
+    go (x:xs) = cons (f (fm x)) (go xs)
+    go []     = nil
 
 instance Traversable Stream where
   -- phew ...
-  traverse f str@(S s0 getNext) = fmap
-    (\l -> S l (\l' -> case l' of
-        Nil1 x     -> Done x
-        Cons1 x xs -> Next xs x))
-    (sequenceA (streamToList (traverse f) str))
+  traverse f str =
+    (\s0' -> ListS s0' id) <$>
+    sequenceA (unstream (traverse f) str (:) [])
 
 data Next s a
   = Next !s !a
@@ -308,18 +313,26 @@ compile_ = flatten . fast
 renderM :: Monad m => (a -> m TLB.Builder) -> FastMarkup a -> m TLB.Builder
 renderM f = go
   where
+
+    runStream (S s0 next fm) = rgo s0
+      where
+        rgo s' = case next s' of
+          Next xs x -> mappend <$> go (fm x) <*> rgo xs
+          Done x    -> go (fm x)
+
+    runStream (ListS l f) = rgo l
+      where
+        rgo (x:xs) = mappend <$> go (f x) <*> rgo xs
+        rgo _      = pure mempty
+
     go fm = case fm of
-      Bunch v        -> V.foldM (\a b -> return (a <> b)) mempty =<< V.mapM go v
-      FBuilder t     -> return t
-      FSText t       -> return (TLB.fromText t)
-      FLText t       -> return (TLB.fromLazyText t)
-      FHole _ a      -> f a
-      FStream (S s0 next) -> runStream s0
-        where
-          runStream s' = case next s' of
-            Next xs x -> mappend <$> go x <*> runStream xs
-            Done x    -> go x
-      _ -> return mempty
+      Bunch v     -> V.foldM (\a b -> return (a <> b)) mempty =<< V.mapM go v
+      FBuilder t  -> return t
+      FSText t    -> return (TLB.fromText t)
+      FLText t    -> return (TLB.fromLazyText t)
+      FHole _ a   -> f a
+      FStream str -> runStream str
+      _           -> return mempty
 
 {-# INLINE renderMs #-}
 -- | Render 'FastMarkup' by recursively rendering any sub-markup.

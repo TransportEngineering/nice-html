@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -36,26 +37,34 @@ module Text.Html.Nice.Monad
   , text
   , unescape
   , dynamic
+  , hole
   , empty
     -- ** Combinators
   , nodes
   , branch
   , Text.Html.Nice.Monad.embed
+  , stream
   , sub
-    -- * Useful 'TLB.Builder' functions
+    -- * Useful exports
+    -- ** Useful 'TLB.Builder' functions
   , TLB.decimal
   , TLB.realFloat
   , TLB.fromText
   , TLB.fromString
   , TLB.fromLazyText
+    -- ** Text builder
+  , TLB.Builder
+    -- ** Void type
+  , Void
   ) where
 import           Control.Monad
 import           Control.Monad.Free.Church
 import           Control.Monad.Trans.State.Strict
 import           Data.Bifunctor
 import           Data.Default.Class
+import           Data.Foldable                    as F
 import           Data.Functor.Const
-import           Data.Functor.Foldable
+import qualified Data.Functor.Foldable            as F
 import           Data.String                      (IsString (..))
 import           Data.Text                        (Text)
 import qualified Data.Text.Lazy                   as TL
@@ -132,7 +141,7 @@ attr :: MakeNode n a -> [Attr n] -> Markup n a
 attr (N f) a = f a
 
 runMarkup :: Markup n a -> Markup' n
-runMarkup h = runF (unMarkup h) (const Empty) Data.Functor.Foldable.embed
+runMarkup h = runF (unMarkup h) (const Empty) F.embed
 
 -- | Compile a 'Html' for use with 'render' and its friends.
 --
@@ -184,28 +193,20 @@ sub :: Markup n a -> Markup (FastMarkup n) a
 sub x = liftF (HoleF Don'tEscape (compile x))
 
 -- | Insert a sub-template.
-embed :: (t -> Markup n a') -> Markup (t -> FastMarkup n) a
-embed f = dynamic (compile . f)
+embed :: (t -> FastMarkup n) -> Markup (t -> FastMarkup n) a
+embed f = dynamic f
 
 type Getting r s a = (a -> Const r a) -> s -> Const r s
 
-{-# INLINE stream #-}
-stream :: s -> (s -> Maybe s) -> Markup (s -> n) a -> Markup n a
-stream s0 next h =
-  case compile h of
-    tpl -> tpl `seq` liftF
-      (StreamF
-       (S s0
-        (\s -> case next s of
-            Just s' -> Next s' (fmap (\f -> f s) tpl)
-            Nothing -> Done (fmap (\f -> f s) tpl))))
-
-{-# INLINE enum #-}
-enum :: (Ord a, Enum a) => a -> a -> Markup (a -> n) r -> Markup n r
-enum start end = stream start
-  (\e -> if e <= end
-         then Just (succ e)
-         else Nothing)
+stream :: Foldable f => Markup (a -> n) r' -> Markup (f a -> FastMarkup n) r
+stream m = embed $ \fa -> case F.toList fa of
+  []   -> FEmpty
+  list -> FStream (S list uncons (\a -> fmap ($ a) fm))
+    where
+      !fm = compile m
+      uncons (x:xs) = case xs of
+        [] -> Done x
+        _  -> Next xs x
 
 doctype :: Markup n a
 doctype = liftF DoctypeF
