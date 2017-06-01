@@ -34,16 +34,23 @@ module Text.Html.Nice.Monad
   , node
   , Attr (..)
   , attr
+  , empty
+    -- ** Text types
   , text
+  , lazyText
+  , builder
   , unescape
+  , string
+    -- * Dynamic nodes
   , dynamic
   , hole
-  , empty
-    -- ** Combinators
+  , embed
+    -- ** Sequential nodes
   , nodes
   , branch
-  , Text.Html.Nice.Monad.embed
+    -- ** Streamed dynamic nodes
   , stream
+    -- ** Combinators
   , sub
     -- * Useful exports
     -- ** Useful 'TLB.Builder' functions
@@ -78,6 +85,8 @@ import           GHC.Exts                         (Constraint, IsList (..))
 import           GHC.OverloadedLabels             (IsLabel (..))
 import           GHC.TypeLits                     (KnownSymbol, symbolVal')
 import           Text.Html.Nice
+
+import           Debug.Trace                      (trace)
 
 -- | 'Markup' is a free monad based on the base functor to 'Markup\'F'
 --
@@ -165,6 +174,10 @@ lazyText t = liftF (TextF DoEscape (LazyT t))
 builder :: TLB.Builder -> Markup n a
 builder t = liftF (TextF DoEscape (BuilderT t))
 
+-- | Insert text and escape it
+string :: String -> Markup n a
+string t = liftF (TextF DoEscape (BuilderT (TLB.fromString t)))
+
 -- | Insert text and don't escape it
 unescape :: Text -> Markup n a
 unescape t = liftF (TextF Don'tEscape (StrictT t))
@@ -193,20 +206,19 @@ sub :: Markup n a -> Markup (FastMarkup n) a
 sub x = liftF (HoleF Don'tEscape (compile x))
 
 -- | Insert a sub-template.
+{-# INLINE embed #-}
 embed :: (t -> FastMarkup n) -> Markup (t -> FastMarkup n) a
 embed f = dynamic f
 
 type Getting r s a = (a -> Const r a) -> s -> Const r s
 
+{-# INLINE stream #-}
 stream :: Foldable f => Markup (a -> n) r' -> Markup (f a -> FastMarkup n) r
 stream m = embed $ \fa -> case F.toList fa of
   []   -> FEmpty
-  list -> FStream (S list uncons (\a -> fmap ($ a) fm))
+  list -> FStream (ListS list (\a -> fmap ($ a) fm))
     where
       !fm = compile m
-      uncons (x:xs) = case xs of
-        [] -> Done x
-        _  -> Next xs x
 
 doctype :: Markup n a
 doctype = liftF DoctypeF

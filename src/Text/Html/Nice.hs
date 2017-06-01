@@ -14,6 +14,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeOperators              #-}
 module Text.Html.Nice
   ( -- * Markup DSL
     Attr (..)
@@ -28,6 +29,7 @@ module Text.Html.Nice
   , Identity (..)
     -- ** Pure rendering
   , render
+  , Render (..)
     -- * Util
   , TLB.toLazyText
     -- * Internals
@@ -36,12 +38,14 @@ module Text.Html.Nice
   , Next (..)
   , Markup'F (..)
   , FastMarkup (..)
+  , (:$)(..)
   , plateFM
   ) where
 import           Control.Monad
 import           Control.Monad.Free
 import           Control.Monad.Free.Church
 import           Control.Monad.ST.Strict
+import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.State.Strict
 import           Data.Bifunctor
 import           Data.Bifunctor.TH
@@ -147,6 +151,14 @@ data Next s a
 
 --------------------------------------------------------------------------------
 -- Compiling
+
+data a :$ b = (:$) (FastMarkup (a -> b)) a
+  deriving (Functor)
+
+infixl 0 :$
+
+instance Show a => Show (a :$ b) where
+  show (a :$ b) = '(':showsPrec 11 b (' ':':':'$':' ':showsPrec 11 (b <$ a) ")")
 
 data FastMarkup a
   = Bunch {-# UNPACK #-} !(Vector (FastMarkup a))
@@ -301,14 +313,27 @@ flatten fm = case fm of
       | eqHack a == eqHack fm = fm
       | otherwise = flatten a
 
+-- | Run all Text builders
+strictify :: FastMarkup a -> FastMarkup a
+strictify fm = case fm of
+  FBuilder t -> FLText (TLB.toLazyText t)
+  FLText   t -> FLText t
+  _          -> runIdentity (plateFM (Identity . strictify) fm)
+
 -- | Compile 'Markup'''
 compile_ :: Markup' a -> FastMarkup a
-compile_ = flatten . fast
+compile_ = strictify . flatten . fast
 
 --------------------------------------------------------------------------------
 -- Rendering
 
-{-# INLINE renderM #-}
+{-#
+  SPECIALISE renderM :: (a -> Identity TLB.Builder)
+                     -> FastMarkup a
+                     -> Identity TLB.Builder
+  #-}
+
+{-# INLINABLE renderM #-}
 -- | Render 'FastMarkup'
 renderM :: Monad m => (a -> m TLB.Builder) -> FastMarkup a -> m TLB.Builder
 renderM f = go
@@ -343,4 +368,23 @@ renderMs f = renderM (f >=> renderMs (f . absurd))
 -- | Render 'FastMarkup' that has no holes.
 render :: FastMarkup Void -> TLB.Builder
 render = runIdentity . renderM absurd
+
+class Render a m where
+  r :: a -> m TLB.Builder
+
+instance (Monad m, Render b m) => Render (a :$ b) m where
+  {-# INLINE r #-}
+  r (b :$ a) = renderM (\f -> r (f a)) b
+
+instance Monad m => Render Void m where
+  {-# INLINE r #-}
+  r = return . absurd
+
+instance Monad m => Render TLB.Builder m where
+  {-# INLINE r #-}
+  r = return
+
+instance {-# OVERLAPPABLE #-} (Render a m, Monad m) => Render (FastMarkup a) m where
+  {-# INLINE r #-}
+  r = renderM r
 
