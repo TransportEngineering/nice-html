@@ -66,11 +66,9 @@ module Text.Html.Nice.Monad
   ) where
 import           Control.Monad
 import           Control.Monad.Free.Church
-import           Control.Monad.Trans.State.Strict
 import           Data.Bifunctor
 import           Data.Default.Class
 import           Data.Foldable                    as F
-import           Data.Functor.Const
 import qualified Data.Functor.Foldable            as F
 import           Data.String                      (IsString (..))
 import           Data.Text                        (Text)
@@ -78,15 +76,12 @@ import qualified Data.Text.Lazy                   as TL
 import qualified Data.Text.Lazy.Builder           as TLB
 import qualified Data.Text.Lazy.Builder.Int       as TLB
 import qualified Data.Text.Lazy.Builder.RealFloat as TLB
-import           Data.Vector                      (Vector)
 import qualified Data.Vector                      as V
 import           Data.Void
-import           GHC.Exts                         (Constraint, IsList (..))
+import           GHC.Exts                         (IsList (..))
 import           GHC.OverloadedLabels             (IsLabel (..))
 import           GHC.TypeLits                     (KnownSymbol, symbolVal')
 import           Text.Html.Nice
-
-import           Debug.Trace                      (trace)
 
 -- | 'Markup' is a free monad based on the base functor to 'Markup\'F'
 --
@@ -209,8 +204,6 @@ sub x = liftF (HoleF Don'tEscape (compile x))
 {-# INLINE embed #-}
 embed :: (t -> FastMarkup n) -> Markup (t -> FastMarkup n) a
 embed f = dynamic f
-
-type Getting r s a = (a -> Const r a) -> s -> Const r s
 
 {-# INLINE stream #-}
 stream :: Foldable f => Markup (a -> n) r' -> Markup (f a -> FastMarkup n) r

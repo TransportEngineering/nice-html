@@ -1,5 +1,7 @@
+{-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE DeriveFoldable             #-}
 {-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DeriveTraversable          #-}
 {-# LANGUAGE ExistentialQuantification  #-}
 {-# LANGUAGE FlexibleContexts           #-}
@@ -41,21 +43,13 @@ module Text.Html.Nice
   , (:$)(..)
   , plateFM
   ) where
+import           Control.DeepSeq                  (NFData (..))
 import           Control.Monad
-import           Control.Monad.Free
-import           Control.Monad.Free.Church
-import           Control.Monad.ST.Strict
-import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.State.Strict
-import           Data.Bifunctor
 import           Data.Bifunctor.TH
-import           Data.Coerce
-import           Data.Functor.Foldable
 import           Data.Functor.Foldable.TH
 import           Data.Functor.Identity
 import           Data.Monoid
-import           Data.STRef
-import           Data.String
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
@@ -63,13 +57,10 @@ import qualified Data.Text.Lazy.Builder           as TLB
 import           Data.Vector                      (Vector)
 import qualified Data.Vector                      as V
 import           Data.Void
-import           GHC.OverloadedLabels             (IsLabel (..))
-import           GHC.TypeLits                     (KnownSymbol, symbolVal')
+import           GHC.Generics                     (Generic)
 import qualified Text.Blaze                       as Blaze
 import qualified Text.Blaze.Internal              as Blaze (textBuilder)
 import qualified Text.Blaze.Renderer.Text         as Blaze
-
-import           Debug.Trace
 
 type AttrName = Text
 
@@ -114,7 +105,7 @@ instance Eq (Stream a) where
 
 instance Functor Stream where
   fmap f (S s next fm) = S s next (\s' -> fmap f (fm s'))
-  fmap f (ListS l g) = ListS l (\s -> fmap f (g s))
+  fmap f (ListS l g)   = ListS l (\s -> fmap f (g s))
 
 instance Foldable Stream where
   foldMap f (S s0 next fm) = go s0
@@ -124,8 +115,9 @@ instance Foldable Stream where
         Done a    -> foldMap f (fm a)
   foldMap f (ListS s fm) = foldMap (foldMap f . fm) s
 
-data List1 a = Cons1 a (List1 a) | Nil1 a
-  deriving (Functor, Foldable, Traversable)
+instance NFData (Stream a) where
+  rnf (S !_ !_ !_)  = ()
+  rnf (ListS !_ !_) = ()
 
 unstream :: (FastMarkup a -> b) -> Stream a -> (b -> c -> c) -> c -> c
 unstream f (S s0 next fm) cons nil = go s0
@@ -168,11 +160,20 @@ data FastMarkup a
   | FBuilder !TLB.Builder
   | FHole !IsEscaped !a
   | FEmpty
-  deriving (Show, Eq, Functor, Foldable, Traversable)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Generic)
 
 instance Monoid (FastMarkup a) where
   mempty = FBuilder mempty
   mappend a b = Bunch [a, b]
+
+instance NFData a => NFData (FastMarkup a) where
+  rnf f = case f of
+    Bunch v -> rnf v
+    FStream s -> rnf s
+    FLText t -> rnf t
+    FSText t -> rnf t
+    FHole !_ a -> rnf a
+    _ -> ()
 
 makeBaseFunctor ''Markup'
 deriveBifunctor ''Markup'F
@@ -194,10 +195,10 @@ compileAttrs v = (static, dynAttrs)
     isHoly :: Foldable f => f a -> Bool
     isHoly = foldr (\_ _ -> True) False
 
-    staticAttrs :: Vector (Attr {- Void -} a)
+    staticAttrs :: Vector (Attr a)
     dynAttrs :: Vector (Attr a)
     (dynAttrs, staticAttrs) = case V.unstablePartition isHoly v of
-      (dyn, stat) -> (dyn, {- unsafeCoerce -} stat)
+      (dyn, stat) -> (dyn, stat)
 
     static :: TLB.Builder
     static =
@@ -345,9 +346,9 @@ renderM f = go
           Next xs x -> mappend <$> go (fm x) <*> rgo xs
           Done x    -> go (fm x)
 
-    runStream (ListS l f) = rgo l
+    runStream (ListS l fm) = rgo l
       where
-        rgo (x:xs) = mappend <$> go (f x) <*> rgo xs
+        rgo (x:xs) = mappend <$> go (fm x) <*> rgo xs
         rgo _      = pure mempty
 
     go fm = case fm of
@@ -372,6 +373,7 @@ render = runIdentity . renderM absurd
 class Render a m where
   r :: a -> m TLB.Builder
 
+-- | Defer application of an argument to rendering
 instance (Monad m, Render b m) => Render (a :$ b) m where
   {-# INLINE r #-}
   r (b :$ a) = renderM (\f -> r (f a)) b
