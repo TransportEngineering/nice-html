@@ -46,7 +46,8 @@ rows = compile
   ]
 
 bigTable :: [[Int]] -> Text
-bigTable table = toLazyText (runIdentity (r (rows :$ table)))
+bigTable table =
+  toLazyText (runIdentity (r (rows :$ table)))
 
 benchmark :: [[Int]] -> Benchmark
 benchmark t = bench "nice" (bigTable `nf` t)

@@ -20,6 +20,7 @@
 module Text.Html.Nice
   ( -- * Markup DSL
     Attr (..)
+  , AttrName
   , Markup' (..)
   , IsEscaped (..)
     -- * Compilation
@@ -85,6 +86,7 @@ data SomeText
 data Markup' a
   = Doctype
   | Node !Text !(Vector (Attr a)) (Markup' a)
+  | VoidNode !Text !(Vector (Attr a))
   | List [Markup' a]
   | Stream (Stream a)
   | Text !IsEscaped !SomeText
@@ -96,8 +98,13 @@ data Stream a
   = forall s. ListS [s] (s -> FastMarkup a)
   | forall s t. S !s !(s -> Next s t) !(t -> FastMarkup a)
 
-instance Show (Stream a) where
-  show _ = "Stream"
+instance Show a => Show (Stream a) where
+  show (ListS s f) = "(Stream (" ++ show (map f s) ++ "))"
+  show (S s next f) = show (ListS (asList s) f)
+    where
+      asList s1 = case next s1 of
+        Next s2 a -> a : asList s2
+        Done a    -> [a]
 
 -- | Don't use this! It's a lie!
 instance Eq (Stream a) where
@@ -244,6 +251,14 @@ fast m = case m of
         , fast m'
         , FSText ("</" <>  t <> ">")
         ]
+  VoidNode t attrs -> case compileAttrs attrs of
+    (staticAttrs, dynAttrs) -> case V.length dynAttrs of
+      0 -> FSText (T.concat ["<", t, toText staticAttrs, " />"])
+      _ -> Bunch
+           [ FBuilder ("<" <> TLB.fromText t <> staticAttrs)
+           , Bunch (V.map fastAttr dynAttrs)
+           , FSText " />"
+           ]
   Text DoEscape t -> FBuilder (escape t)
   Text Don'tEscape t -> case t of
     StrictT a  -> FSText a

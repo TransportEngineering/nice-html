@@ -206,7 +206,9 @@ embed :: (t -> FastMarkup n) -> Markup (t -> FastMarkup n) a
 embed f = dynamic f
 
 {-# INLINE stream #-}
-stream :: Foldable f => Markup (a -> n) r' -> Markup (f a -> FastMarkup n) r
+stream :: Foldable f
+       => Markup (a -> n) r'
+       -> Markup (f a -> FastMarkup n) r
 stream m = embed $ \fa -> case F.toList fa of
   []   -> FEmpty
   list -> FStream (ListS list (\a -> fmap ($ a) fm))

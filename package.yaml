@@ -16,6 +16,8 @@ library:
   exposed-modules:
   - Text.Html.Nice
   - Text.Html.Nice.Monad
+  - Text.Html.Nice.Writer
+  - Text.Html.Nice.Writer.Html5
   dependencies:
   - base >=4.7 && <5
   - bytestring
@@ -31,6 +33,7 @@ library:
   - free
   - bifunctors
   - data-default-class
+  - pretty-show
 
 _benchmarks: &bench-opts
   dependencies:
@@ -43,10 +46,12 @@ _benchmarks: &bench-opts
   - bytestring
   - nice-html
   - weigh
+  - pretty-show
   other-modules:
   - BigTable.Blaze
   - BigTable.Lucid
   - BigTable.Nice
+  - BigTable.NiceWriter
   source-dirs: benchmarks
 
 benchmarks:

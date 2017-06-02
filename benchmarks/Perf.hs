@@ -1,9 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
-import qualified BigTable.Blaze    as Blaze
-import qualified BigTable.Lucid    as Lucid
-import qualified BigTable.Nice     as Nice
-import qualified Criterion.Main    as Perf
-import qualified Data.Text.Lazy.IO as T
+import qualified BigTable.Blaze      as Blaze
+import qualified BigTable.Lucid      as Lucid
+import qualified BigTable.Nice       as Nice
+import qualified BigTable.NiceWriter as NiceWriter
+import qualified Criterion.Main      as Perf
+import qualified Data.Text.Lazy.IO   as T
 
 {-# NOINLINE rows #-}
 rows :: Int -> [[Int]]
@@ -27,6 +28,7 @@ main = do
         f' = f (rows 10)
         g' = g (rows 10)
 
+  check "niceWriter = nice" NiceWriter.bigTable Nice.bigTable
   check "nice = blaze" Nice.bigTable Blaze.bigTable
   check "nice = lucid" Nice.bigTable Lucid.bigTable
   check "lucid = blaze" Lucid.bigTable Blaze.bigTable
@@ -36,6 +38,7 @@ main = do
       [ Blaze.benchmark (rows i)
       , Nice.benchmark (rows i)
       , Lucid.benchmark (rows i)
+      , NiceWriter.benchmark (rows i)
       ]
     | i <- [10, 100, 1000]
     ]
