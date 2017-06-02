@@ -93,8 +93,8 @@ data Markup' a
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
 data Stream a
-  = forall s t. S !s !(s -> Next s t) !(t -> FastMarkup a)
-  | forall s. ListS [s] (s -> FastMarkup a)
+  = forall s. ListS [s] (s -> FastMarkup a)
+  | forall s t. S !s !(s -> Next s t) !(t -> FastMarkup a)
 
 instance Show (Stream a) where
   show _ = "Stream"
@@ -120,15 +120,15 @@ instance NFData (Stream a) where
   rnf (ListS !_ !_) = ()
 
 unstream :: (FastMarkup a -> b) -> Stream a -> (b -> c -> c) -> c -> c
+unstream f (ListS l fm) cons nil = go l
+  where
+    go (x:xs) = cons (f (fm x)) (go xs)
+    go []     = nil
 unstream f (S s0 next fm) cons nil = go s0
   where
     go s = case next s of
       Next s1 a -> cons (f (fm a)) (go s1)
       Done a    -> cons (f (fm a)) nil
-unstream f (ListS l fm) cons nil = go l
-  where
-    go (x:xs) = cons (f (fm x)) (go xs)
-    go []     = nil
 
 instance Traversable Stream where
   -- phew ...

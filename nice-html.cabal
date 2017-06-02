@@ -45,6 +45,7 @@ library
       Text.Html.Nice
       Text.Html.Nice.Monad
   other-modules:
+      Text.Html.Nice.Writer
       Paths_nice_html
   default-language: Haskell2010
 
