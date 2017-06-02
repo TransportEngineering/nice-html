@@ -41,11 +41,13 @@ library
     , free
     , bifunctors
     , data-default-class
+    , pretty-show
   exposed-modules:
       Text.Html.Nice
       Text.Html.Nice.Monad
-  other-modules:
       Text.Html.Nice.Writer
+      Text.Html.Nice.Writer.Html5
+  other-modules:
       Paths_nice_html
   default-language: Haskell2010
 
@@ -65,10 +67,12 @@ benchmark mem
     , bytestring
     , nice-html
     , weigh
+    , pretty-show
   other-modules:
       BigTable.Blaze
       BigTable.Lucid
       BigTable.Nice
+      BigTable.NiceWriter
   default-language: Haskell2010
 
 benchmark perf
@@ -87,8 +91,10 @@ benchmark perf
     , bytestring
     , nice-html
     , weigh
+    , pretty-show
   other-modules:
       BigTable.Blaze
       BigTable.Lucid
       BigTable.Nice
+      BigTable.NiceWriter
   default-language: Haskell2010
