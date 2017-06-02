@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module BigTable.Blaze where
-import           Criterion.Main
+import           Criterion.Main                (Benchmark, bench, nf)
 import           Data.Text.Lazy                (Text)
 import           Text.Blaze.Html.Renderer.Text as H
 import           Text.Blaze.Html5              as H
+import           Weigh                         (Weigh, func)
 
 -- | Render the argument matrix as an HTML table.
 --
@@ -40,3 +41,6 @@ bigTable t = renderHtml $ do
 
 benchmark :: [[Int]] -> Benchmark
 benchmark rows = bench "blaze" (bigTable `nf` rows)
+
+weight :: [[Int]] -> Weigh ()
+weight i = func (show (length i) ++ "/blaze") bigTable i

@@ -1,10 +1,10 @@
+{-# LANGUAGE BangPatterns #-}
 import qualified BigTable.Blaze     as Blaze
 import qualified BigTable.Lucid     as Lucid
 import qualified BigTable.Nice      as Nice
-import           Criterion.Main     (bgroup, defaultMain, env)
+import           Control.Monad      (forM_)
 import qualified Data.Text.Lazy.IO  as T
-import           System.Environment
-import           Text.Read          (readMaybe)
+import qualified Weigh              as Mem
 
 {-# NOINLINE rows #-}
 rows :: Int -> [[Int]]
@@ -12,6 +12,8 @@ rows i = replicate i [1..10]
 
 main :: IO ()
 main = do
+
+  -- Sanity checks
   let
     check l f g =
       if f' == g'
@@ -26,18 +28,13 @@ main = do
         f' = f (rows 10)
         g' = g (rows 10)
 
-    go f i = env (return (rows i)) f
-
   check "nice = blaze" Nice.bigTable Blaze.bigTable
   check "nice = lucid" Nice.bigTable Lucid.bigTable
   check "lucid = blaze" Lucid.bigTable Blaze.bigTable
 
-  defaultMain
-    [ bgroup (show i)
-      [ go Blaze.benchmark i
-      , go Nice.benchmark i
-      , go Lucid.benchmark i
-      ]
-    | i <- [10, 100, 1000]
-    ]
+  Mem.mainWith $ forM_ [10, 100, 1000] $ \i -> do
+    let table = rows i
+    Blaze.weight table
+    Nice.weight table
+    Lucid.weight table
 

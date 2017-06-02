@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module BigTable.Lucid where
-import           Criterion.Main
-import           Data.Text.Lazy                (Text)
+import           Criterion.Main (Benchmark, bench, nf)
+import           Data.Text.Lazy (Text)
+import           Lucid.Base
 import           Lucid.Html5
-import Lucid.Base
+import           Weigh          (Weigh, func)
 
 -- | Render the argument matrix as an HTML table.
 --
@@ -46,3 +47,5 @@ bigTable t = renderText $ do
 benchmark :: [[Int]] -> Benchmark
 benchmark rows = bench "lucid" (bigTable `nf` rows)
 
+weight :: [[Int]] -> Weigh ()
+weight i = func (show (length i) ++ "/lucid") bigTable i

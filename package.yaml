@@ -9,6 +9,8 @@ github: mikeplus64/nice-html
 extra-source-files:
 - README.md
 
+ghc-options: -Wall -O2
+
 library:
   source-dirs: src
   exposed-modules:
@@ -16,8 +18,9 @@ library:
   - Text.Html.Nice.Monad
   dependencies:
   - base >=4.7 && <5
+  - bytestring
+  - deepseq
   - text >=1.2
-  - containers
   - lens
   - vector
   - template-haskell
@@ -29,20 +32,28 @@ library:
   - bifunctors
   - data-default-class
 
+_benchmarks: &bench-opts
+  dependencies:
+  - base
+  - criterion
+  - blaze-markup
+  - blaze-html
+  - lucid
+  - text
+  - bytestring
+  - nice-html
+  - weigh
+  other-modules:
+  - BigTable.Blaze
+  - BigTable.Lucid
+  - BigTable.Nice
+  source-dirs: benchmarks
+
 benchmarks:
-  bigtable:
-    main: BigTable.hs
-    source-dirs: benchmarks
-    other-modules:
-    - BigTable.Blaze
-    - BigTable.Lucid
-    - BigTable.Nice
-    dependencies:
-    - base
-    - criterion
-    - blaze-markup
-    - blaze-html
-    - lucid
-    - text
-    - bytestring
-    - nice-html
+  perf:
+    <<: *bench-opts
+    main: Perf.hs
+
+  mem:
+    <<: *bench-opts
+    main: Mem.hs
