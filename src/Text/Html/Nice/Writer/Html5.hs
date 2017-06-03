@@ -2,9 +2,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 module Text.Html.Nice.Writer.Html5 where
-import qualified Language.Haskell.TH   as TH
-import           Text.Html.Nice        (AttrName)
-import           Text.Html.Nice.Writer (Markup, makeElement, makeVoidElement)
+import qualified Language.Haskell.TH     as TH
+import           Text.Html.Nice.Internal (AttrName)
+import           Text.Html.Nice.Writer   (Markup, makeElement, makeVoidElement)
 
 $(let
     parents :: [String]
@@ -61,7 +61,8 @@ $(let
         , "scoped", "seamless", "selected", "shape", "size", "sizes", "span"
         , "spellcheck", "src", "srcdoc", "start", "step", "style", "subject"
         , "summary", "tabindex", "target", "title", "type", "usemap", "value"
-        , "width", "wrap", "xmlns" ]
+        , "width", "wrap", "xmlns"
+        ]
 
     fun :: TH.Name -> String -> TH.ExpQ
     fun f x = TH.appE (TH.varE f) (TH.stringE x)

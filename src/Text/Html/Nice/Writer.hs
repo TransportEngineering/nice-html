@@ -13,16 +13,44 @@
 {-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators          #-}
-module Text.Html.Nice.Writer where
-import           Data.Foldable          (toList)
-import           Data.String            (IsString (..))
-import           Data.Text              (Text)
-import qualified Data.Text              as T
-import qualified Data.Text.Lazy         as TL
-import qualified Data.Text.Lazy.Builder as TLB
-import qualified Data.Vector            as V
-import           Text.Html.Nice
-
+module Text.Html.Nice.Writer
+  ( -- * The markup monad
+    Markup
+    -- * Basic node types
+  , text
+  , lazyText
+  , builder
+  , string
+    -- ** Variants that don't escape their input
+  , textRaw
+  , lazyTextRaw
+  , builderRaw
+  , stringRaw
+    -- * Combinators
+  , (!)
+  , dynamic
+  , dynamicRaw
+  , sub
+    -- ** Streaming
+  , stream
+    -- ** Noting specific elements
+  , Note (..)
+  , note
+    -- * Compilation
+  , compile
+  , runMarkup
+    -- * Internals
+  , makeElement
+  , makeVoidElement
+  ) where
+import           Data.Foldable           (toList)
+import           Data.String             (IsString (..))
+import           Data.Text               (Text)
+import qualified Data.Text               as T
+import qualified Data.Text.Lazy          as TL
+import qualified Data.Text.Lazy.Builder  as TLB
+import qualified Data.Vector             as V
+import           Text.Html.Nice.Internal
 
 type Children p = [Markup' p] -> [Markup' p]
 
@@ -32,6 +60,7 @@ data MarkupStep p a = MarkupStep
   , msResult   :: a
   } deriving (Functor, Foldable, Traversable)
 
+-- | A Writer-like monad
 newtype Markup p a = Markup (Int -> [Attr p] -> MarkupStep p a)
 
 instance Functor (Markup p) where
@@ -57,8 +86,10 @@ compile :: Markup t a -> FastMarkup t
 compile m = case runM 0 m of (m', _, _) -> compile_ m'
 
 -- | Compile a 'Markup'. Don't run this multiple times!
-compileE :: Markup t a -> (a, FastMarkup t)
-compileE m = case runM 0 m of (m', _, a) -> (a, compile_ m')
+--
+-- Same as 'compile' but lets you use the result.
+runMarkup :: Markup t a -> (a, FastMarkup t)
+runMarkup m = case runM 0 m of (m', _, a) -> (a, compile_ m')
 
 --------------------------------------------------------------------------------
 -- Internals
@@ -99,6 +130,10 @@ lift m' = Markup $ \i _ -> MarkupStep
 dynamic :: p -> Markup p ()
 dynamic = lift . Hole DoEscape
 
+{-# INLINE dynamicRaw #-}
+dynamicRaw :: p -> Markup p ()
+dynamicRaw = lift . Hole Don'tEscape
+
 instance a ~ () => IsString (Markup t a) where
   fromString = text . fromString
 
@@ -112,23 +147,54 @@ instance a ~ () => IsString (Markup t a) where
   case f x of
     Markup m -> m i (a ++ attrs)
 
--- | Give a node a unique id
---
--- Might be handy to build server-side react-esque systems
-note :: (Markup t a -> Markup t b) -> Markup t a -> Markup t Int
-note f x = Markup $ \i attrs ->
-  case f x of
-    Markup m ->
-      (m (i + 1) ("id" := T.pack (show i):attrs)) { msResult = i }
-
 infixl 8 !
 
 {-# INLINE stream #-}
 stream :: Foldable f
        => Markup (a -> n) r
-       -> Markup (f a -> FastMarkup n) ()
-stream m = dynamic (\fa -> FStream (ListS (toList fa) (\a -> fmap ($ a) fm)))
-  where !fm = compile m
+       -> Markup (f a -> FastMarkup n) r
+stream m =
+  result <$ dynamic (\fa -> FStream (ListS
+                                     (toList fa)
+                                     (\a -> fmap ($ a) fm)))
+  where
+    (result, !fm) = runMarkup m
+
+-- | Sub-template
+sub :: Markup n a -> Markup (FastMarkup n) a
+sub m = case runMarkup m of
+  (a, fm) -> a <$ lift (Hole Don'tEscape fm)
+
+--------------------------------------------------------------------------------
+-- 'Note' system
+
+data Note a = Note
+  { noteId :: {-# UNPACK #-} !Int
+  , noted  :: FastMarkup a
+  } deriving (Eq, Show, Functor)
+
+-- | Give a node a unique id
+--
+-- Might be handy to build server-side react-esque systems
+note :: (Markup t a -> Markup t b) -> Markup t a -> Markup t (Note t, b)
+note f x = withNote
+  where
+    withNote = do
+      (i, a) <- markup
+      case runM i markup of
+        (m', _, _) -> return (Note
+          { noteId = i
+          , noted = compile_ m'
+          }, a)
+
+    markup = Markup $ \i attrs -> case f x of
+      Markup m ->
+        case m (i + 1) ("id" := niceId i:attrs) of
+          ms -> ms { msResult = (i, msResult ms) }
+
+-- | HTML 'id' attribute given to 'note'd elements.
+niceId :: Int -> Text
+niceId i = T.pack ("nice-" ++ show i)
 
 --------------------------------------------------------------------------------
 -- Useful string functions
@@ -149,4 +215,19 @@ builder = lift . Text DoEscape . BuilderT
 string :: String -> Markup n ()
 string = lift . Text DoEscape . BuilderT . TLB.fromString
 
+-- | Insert text and don't escape it
+textRaw :: Text -> Markup t ()
+textRaw = lift . Text Don'tEscape . StrictT
+
+-- | Insert text and don't escape it
+lazyTextRaw :: TL.Text -> Markup n ()
+lazyTextRaw = lift . Text Don'tEscape . LazyT
+
+-- | Insert text and don't escape it
+builderRaw :: TLB.Builder -> Markup n ()
+builderRaw = lift . Text Don'tEscape . BuilderT
+
+-- | Insert text and don't escape it
+stringRaw :: String -> Markup n ()
+stringRaw = lift . Text Don'tEscape . BuilderT . TLB.fromString
 

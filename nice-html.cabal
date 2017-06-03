@@ -44,7 +44,8 @@ library
     , pretty-show
   exposed-modules:
       Text.Html.Nice
-      Text.Html.Nice.Monad
+      Text.Html.Nice.Internal
+      Text.Html.Nice.FreeMonad
       Text.Html.Nice.Writer
       Text.Html.Nice.Writer.Html5
   other-modules:
@@ -72,7 +73,6 @@ benchmark mem
       BigTable.Blaze
       BigTable.Lucid
       BigTable.Nice
-      BigTable.NiceWriter
   default-language: Haskell2010
 
 benchmark perf
@@ -96,5 +96,4 @@ benchmark perf
       BigTable.Blaze
       BigTable.Lucid
       BigTable.Nice
-      BigTable.NiceWriter
   default-language: Haskell2010

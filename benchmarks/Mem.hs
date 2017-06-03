@@ -2,7 +2,6 @@
 import qualified BigTable.Blaze      as Blaze
 import qualified BigTable.Lucid      as Lucid
 import qualified BigTable.Nice       as Nice
-import qualified BigTable.NiceWriter as NiceWriter
 import           Control.Monad       (forM_)
 import qualified Data.Text.Lazy.IO   as T
 import qualified Weigh               as Mem
@@ -29,7 +28,6 @@ main = do
         f' = f (rows 10)
         g' = g (rows 10)
 
-  check "niceWriter = nice" NiceWriter.bigTable Nice.bigTable
   check "nice = blaze" Nice.bigTable Blaze.bigTable
   check "nice = lucid" Nice.bigTable Lucid.bigTable
   check "lucid = blaze" Lucid.bigTable Blaze.bigTable
@@ -38,6 +36,5 @@ main = do
     let table = rows i
     Blaze.weight table
     Nice.weight table
-    NiceWriter.weight table
     Lucid.weight table
 

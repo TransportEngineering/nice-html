@@ -15,7 +15,8 @@ library:
   source-dirs: src
   exposed-modules:
   - Text.Html.Nice
-  - Text.Html.Nice.Monad
+  - Text.Html.Nice.Internal
+  - Text.Html.Nice.FreeMonad
   - Text.Html.Nice.Writer
   - Text.Html.Nice.Writer.Html5
   dependencies:
@@ -51,7 +52,6 @@ _benchmarks: &bench-opts
   - BigTable.Blaze
   - BigTable.Lucid
   - BigTable.Nice
-  - BigTable.NiceWriter
   source-dirs: benchmarks
 
 benchmarks:

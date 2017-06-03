@@ -12,7 +12,32 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeFamilyDependencies     #-}
 {-# LANGUAGE TypeOperators              #-}
-module Text.Html.Nice.Monad
+-- | A 'Free' monad-based HTML markup monad. Unlike the writer-like monad in
+-- "Text.Html.Nice.Writer", sequencing bits of markup together results in them
+-- being nested, rather than concatenated.
+--
+-- There is no kitchen-sink of HTML5 elements provided. Use OverloadedLabels
+-- instead: @ #div :: Markup n () @ and @ #div :: MakeNode n () @.
+--
+-- Since the monad and applicative of 'Markup' here nests rather than
+-- concatenates, the function 'nodes' is provided to put a list of nodes
+-- in sequence. You can use OverloadedLists for convenient syntax here.
+--
+-- Example Markup:
+--
+-- @
+-- #html >>
+-- [ #head >> #title >> "Title goes here"
+-- , #body >>
+--   [ #h1 >> "heading goes here"
+--   , #p >> "i am a paragraph below the heading"
+--   , do i <- branch [0..100]
+--        builder (decimal i)
+--   ]
+-- ]
+-- @
+--
+module Text.Html.Nice.FreeMonad
   ( -- * Markup
     Markup
   , FastMarkup
@@ -70,6 +95,7 @@ import           Data.Bifunctor
 import           Data.Default.Class
 import           Data.Foldable                    as F
 import qualified Data.Functor.Foldable            as F
+import           Data.Functor.Identity
 import           Data.String                      (IsString (..))
 import           Data.Text                        (Text)
 import qualified Data.Text.Lazy                   as TL
@@ -81,7 +107,7 @@ import           Data.Void
 import           GHC.Exts                         (IsList (..))
 import           GHC.OverloadedLabels             (IsLabel (..))
 import           GHC.TypeLits                     (KnownSymbol, symbolVal')
-import           Text.Html.Nice
+import           Text.Html.Nice.Internal
 
 -- | 'Markup' is a free monad based on the base functor to 'Markup\'F'
 --
