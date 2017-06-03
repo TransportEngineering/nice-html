@@ -314,6 +314,9 @@ strictify fm = case fm of
 compile_ :: Markup' a -> FastMarkup a
 compile_ = strictify . flatten . fast
 
+recompile :: FastMarkup a -> FastMarkup a
+recompile = strictify . flatten
+
 --------------------------------------------------------------------------------
 -- Rendering
 

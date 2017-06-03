@@ -11,6 +11,8 @@ module Text.Html.Nice
   , renderM
   , renderMs
   , render
+    -- * Utility
+  , recompile
     -- * Re-exports of 'TLB.Builder' functions
   , module Data.Text.Lazy.Builder
   , module Data.Text.Lazy.Builder.Int
@@ -25,7 +27,7 @@ import           Data.Text.Lazy.Builder
 import           Data.Text.Lazy.Builder.Int
 import           Data.Text.Lazy.Builder.RealFloat
 import           Text.Html.Nice.Internal          ((:$) (..), FastMarkup,
-                                                   Render (..), render, renderM,
-                                                   renderMs)
+                                                   Render (..), recompile,
+                                                   render, renderM, renderMs)
 import           Text.Html.Nice.Writer
 import           Text.Html.Nice.Writer.Html5
