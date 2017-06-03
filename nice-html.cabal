@@ -1,6 +1,8 @@
 name:           nice-html
-version:        0.1.0.0
+version:        0.1.1
 category:       Web
+description: A fast and nice HTML templating library with distinct compilation/rendering phases.
+synopsis: A fast and nice HTML templating library with distinct compilation/rendering phases.
 homepage:       https://github.com/mikeplus64/nice-html#readme
 bug-reports:    https://github.com/mikeplus64/nice-html/issues
 author:         Mike Ledger

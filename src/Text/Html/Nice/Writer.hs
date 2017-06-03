@@ -21,6 +21,7 @@ module Text.Html.Nice.Writer
   , lazyText
   , builder
   , string
+  , doctype_
     -- ** Variants that don't escape their input
   , textRaw
   , lazyTextRaw
@@ -122,6 +123,9 @@ lift m' = Markup $ \i _ -> MarkupStep
   , msChildren = (m':)
   , msResult = ()
   }
+
+doctype_ :: Markup p ()
+doctype_ = lift Doctype
 
 --------------------------------------------------------------------------------
 -- Node types
