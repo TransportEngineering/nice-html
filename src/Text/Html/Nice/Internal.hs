@@ -20,7 +20,7 @@
 module Text.Html.Nice.Internal where
 import           Control.DeepSeq                  (NFData (..))
 import           Control.Monad
-import           Control.Monad.Trans.State.Strict
+import           Control.Monad.Trans.State.Strict (evalState, get, modify')
 import           Data.Bifunctor.TH
 import           Data.Functor.Foldable.TH
 import           Data.Functor.Identity
