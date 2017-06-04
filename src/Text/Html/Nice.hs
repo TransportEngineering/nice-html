@@ -2,6 +2,7 @@ module Text.Html.Nice
   (
     -- * Nice HTML writer monad
     module Text.Html.Nice.Writer
+  , Attr (..)
     -- * HTML5 support
   , module Text.Html.Nice.Writer.Html5
     -- * Rendering
@@ -26,8 +27,9 @@ import           Data.Text.Lazy                   (Text, fromStrict, toStrict)
 import           Data.Text.Lazy.Builder
 import           Data.Text.Lazy.Builder.Int
 import           Data.Text.Lazy.Builder.RealFloat
-import           Text.Html.Nice.Internal          ((:$) (..), FastMarkup,
-                                                   Render (..), recompile,
-                                                   render, renderM, renderMs)
+import           Text.Html.Nice.Internal          ((:$) (..), Attr (..),
+                                                   FastMarkup, Render (..),
+                                                   recompile, render, renderM,
+                                                   renderMs)
 import           Text.Html.Nice.Writer
 import           Text.Html.Nice.Writer.Html5
