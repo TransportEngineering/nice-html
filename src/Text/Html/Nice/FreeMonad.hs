@@ -237,7 +237,7 @@ stream :: Foldable f
        -> Markup (f a -> FastMarkup n) r
 stream m = embed $ \fa -> case F.toList fa of
   []   -> FEmpty
-  list -> FStream (ListS list (\a -> fmap ($ a) fm))
+  list -> FStream (ListS list fm)
     where
       !fm = compile m
 

@@ -71,58 +71,42 @@ data Markup' a
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
 data Stream a
-  = forall s. ListS [s] (s -> FastMarkup a)
-  | forall s t. S !s !(s -> Next s t) !(t -> FastMarkup a)
+  = forall s. ListS [s] (FastMarkup (s -> a))
+  | S [FastMarkup a]
 
 instance Show a => Show (Stream a) where
-  show (ListS s f) = "(Stream (" ++ show (map f s) ++ "))"
-  show (S s next f) = show (ListS (asList s) f)
-    where
-      asList s1 = case next s1 of
-        Next s2 a -> a : asList s2
-        Done a    -> [a]
+  show (ListS s f) = "(Stream (" ++ show (map (\a -> fmap ($ a) f) s) ++ "))"
+  show (S fm) = "(S " ++ show fm ++ ")"
 
 -- | Don't use this! It's a lie!
 instance Eq (Stream a) where
   _ == _ = True
 
 instance Functor Stream where
-  fmap f (S s next fm) = S s next (\s' -> fmap f (fm s'))
-  fmap f (ListS l g)   = ListS l (\s -> fmap f (g s))
+  fmap f (ListS l g) = ListS l (fmap (fmap f) g)
+  fmap f (S x) = S (fmap (fmap f) x)
 
 instance Foldable Stream where
-  foldMap f (S s0 next fm) = go s0
-    where
-      go s = case next s of
-        Next s1 a -> foldMap f (fm a) <> go s1
-        Done a    -> foldMap f (fm a)
-  foldMap f (ListS s fm) = foldMap (foldMap f . fm) s
+  foldMap f s = unstream (foldMap f) s mappend mempty
 
-instance NFData (Stream a) where
-  rnf (S !_ !_ !_)  = ()
-  rnf (ListS !_ !_) = ()
+instance NFData a => NFData (Stream a) where
+  rnf (ListS !_ !s) = rnf s
+  rnf (S fm) = rnf fm
 
+{-# INLINE unstream #-}
 unstream :: (FastMarkup a -> b) -> Stream a -> (b -> c -> c) -> c -> c
 unstream f (ListS l fm) cons nil = go l
   where
-    go (x:xs) = cons (f (fm x)) (go xs)
+    go (x:xs) = cons (f (fmap ($ x) fm)) (go xs)
     go []     = nil
-unstream f (S s0 next fm) cons nil = go s0
+unstream f (S l) cons nil = go l
   where
-    go s = case next s of
-      Next s1 a -> cons (f (fm a)) (go s1)
-      Done a    -> cons (f (fm a)) nil
+    go (x:xs) = cons (f x) (go xs)
+    go []     = nil
 
 instance Traversable Stream where
   -- phew ...
-  traverse f str =
-    (\s0' -> ListS s0' id) <$>
-    sequenceA (unstream (traverse f) str (:) [])
-
-data Next s a
-  = Next !s !a
-  | Done !a
-  deriving (Show, Eq, Functor, Foldable, Traversable)
+  traverse f str = S <$> sequenceA (unstream (traverse f) str (:) [])
 
 --------------------------------------------------------------------------------
 -- Compiling
@@ -142,6 +126,7 @@ data FastMarkup a
   | FSText {-# UNPACK #-} !Text
   | FBuilder !TLB.Builder
   | FHole !IsEscaped !a
+  | FEscaped (FastMarkup a)
   | FEmpty
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic)
 
@@ -334,24 +319,14 @@ renderM :: Monad m => (a -> m TLB.Builder) -> FastMarkup a -> m TLB.Builder
 renderM f = go
   where
 
-    runStream (S s0 next fm) = rgo s0
-      where
-        rgo s' = case next s' of
-          Next xs x -> mappend <$> go (fm x) <*> rgo xs
-          Done x    -> go (fm x)
-
-    runStream (ListS l fm) = rgo l
-      where
-        rgo (x:xs) = mappend <$> go (fm x) <*> rgo xs
-        rgo _      = pure mempty
-
     go fm = case fm of
       Bunch v     -> V.foldM (\a b -> return (a <> b)) mempty =<< V.mapM go v
       FBuilder t  -> return t
       FSText t    -> return (TLB.fromText t)
       FLText t    -> return (TLB.fromLazyText t)
       FHole _ a   -> f a
-      FStream str -> runStream str
+      FStream str -> unstream go str (liftM2 mappend) (return mempty)
+      FEscaped a  -> fmap (escape . BuilderT) (go a)
       _           -> return mempty
 
 {-# INLINE renderMs #-}
