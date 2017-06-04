@@ -128,6 +128,7 @@ data FastMarkup a
   | FSText {-# UNPACK #-} !Text
   | FBuilder !TLB.Builder
   | FHole !IsEscaped !a
+  | FDeep (FastMarkup (FastMarkup a))
   | FEmpty
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic)
 
@@ -305,6 +306,9 @@ compile_ = strictify . flatten . fast
 recompile :: FastMarkup a -> FastMarkup a
 recompile = strictify . flatten
 
+unlayer :: FastMarkup (FastMarkup a) -> FastMarkup a
+unlayer = FDeep
+
 --------------------------------------------------------------------------------
 -- Rendering
 
@@ -319,7 +323,6 @@ recompile = strictify . flatten
 renderM :: Monad m => (a -> m TLB.Builder) -> FastMarkup a -> m TLB.Builder
 renderM f = go
   where
-
     go fm = case fm of
       Bunch v     -> V.foldM (\a b -> return (a <> b)) mempty =<< V.mapM go v
       FBuilder t  -> return t
@@ -327,6 +330,7 @@ renderM f = go
       FLText t    -> return (TLB.fromLazyText t)
       FHole _ a   -> f a
       FStream str -> unstream go str (liftM2 mappend) (return mempty)
+      FDeep   a   -> renderM go a
       _           -> return mempty
 
 {-# INLINE renderMs #-}
