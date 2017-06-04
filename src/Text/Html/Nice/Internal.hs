@@ -31,6 +31,8 @@ import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import qualified Data.Text.Lazy.Builder           as TLB
+import qualified Data.Text.Lazy.Builder.Int       as TLB
+import qualified Data.Text.Lazy.Builder.RealFloat as TLB
 import           Data.Vector                      (Vector)
 import qualified Data.Vector                      as V
 import           Data.Void
@@ -126,7 +128,6 @@ data FastMarkup a
   | FSText {-# UNPACK #-} !Text
   | FBuilder !TLB.Builder
   | FHole !IsEscaped !a
-  | FEscaped (FastMarkup a)
   | FEmpty
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic)
 
@@ -326,7 +327,6 @@ renderM f = go
       FLText t    -> return (TLB.fromLazyText t)
       FHole _ a   -> f a
       FStream str -> unstream go str (liftM2 mappend) (return mempty)
-      FEscaped a  -> fmap (escape . BuilderT) (go a)
       _           -> return mempty
 
 {-# INLINE renderMs #-}
@@ -364,3 +364,34 @@ instance {-# OVERLAPPABLE #-} (Render a m, Monad m) => Render (FastMarkup a) m w
   {-# INLINE r #-}
   r = renderM r
 
+--------------------------------------------------------------------------------
+
+class ToFastMarkup a where
+  toFastMarkup :: a -> FastMarkup b
+
+instance ToFastMarkup Text where
+  {-# INLINE toFastMarkup #-}
+  toFastMarkup = FSText
+
+instance ToFastMarkup TL.Text where
+  {-# INLINE toFastMarkup #-}
+  toFastMarkup = FLText
+
+instance ToFastMarkup TLB.Builder where
+  {-# INLINE toFastMarkup #-}
+  toFastMarkup = FBuilder
+
+newtype AsDecimal a = AsDecimal { asDecimal :: a }
+instance Integral a => ToFastMarkup (AsDecimal a) where
+  {-# INLINE toFastMarkup #-}
+  toFastMarkup = toFastMarkup . TLB.decimal . asDecimal
+
+newtype AsHex a = AsHex { asHex :: a }
+instance Integral a => ToFastMarkup (AsHex a) where
+  {-# INLINE toFastMarkup #-}
+  toFastMarkup = toFastMarkup . TLB.hexadecimal . asHex
+
+newtype AsRealFloat a = AsRealFloat { asRealFloat :: a }
+instance RealFloat a => ToFastMarkup (AsRealFloat a) where
+  {-# INLINE toFastMarkup #-}
+  toFastMarkup = toFastMarkup . TLB.realFloat . asRealFloat

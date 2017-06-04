@@ -130,6 +130,9 @@ doctype_ = lift Doctype
 --------------------------------------------------------------------------------
 -- Node types
 
+using :: ToFastMarkup a => (a -> b) -> Markup (a -> FastMarkup r) ()
+using f = dynamic (toFastMarkup . f)
+
 {-# INLINE dynamic #-}
 dynamic :: p -> Markup p ()
 dynamic = lift . Hole DoEscape
