@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveFunctor          #-}
 {-# LANGUAGE DeriveTraversable      #-}
 {-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE OverloadedLabels       #-}
@@ -28,6 +29,7 @@ module Text.Html.Nice.Writer
   , builderRaw
   , stringRaw
     -- * Combinators
+  , AddAttr
   , (!)
   , dynamic
   , dynamicRaw
@@ -148,13 +150,23 @@ instance a ~ () => IsString (Markup t a) where
 --------------------------------------------------------------------------------
 -- Combinators
 
-{-# INLINE (!) #-}
--- | Add some attributes
-(!) :: (Markup t a -> Markup t b) -> [Attr t] -> Markup t a -> Markup t b
-(!) f a x = Markup $ \i attrs ->
-  case f x of
-    Markup m -> m i (a ++ attrs)
+type MarkupLike a = a
 
+class AddAttr a t | a -> t where
+  addAttr :: a -> Attr t -> a
+
+instance AddAttr (Markup t a -> Markup t b) t where
+  addAttr f a x = Markup $ \i attrs ->
+    case f x of
+      Markup m -> m i (a:attrs)
+
+instance AddAttr (Markup t a) t where
+  addAttr f a = Markup $ \i attrs ->
+    case f of
+      Markup m -> m i (a:attrs)
+
+(!) :: AddAttr a t => MarkupLike a -> Attr t -> MarkupLike a
+(!) = addAttr
 infixl 8 !
 
 {-# INLINE stream #-}
