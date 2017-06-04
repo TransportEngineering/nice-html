@@ -1,5 +1,5 @@
 name:           nice-html
-version:        0.1.2
+version:        0.1.3
 category:       Web
 description: A fast and nice HTML templating library with distinct compilation/rendering phases.
 synopsis: A fast and nice HTML templating library with distinct compilation/rendering phases.
