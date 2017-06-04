@@ -35,6 +35,7 @@ module Text.Html.Nice.Writer
   , dynamicRaw
   , using
   , sub
+  , mapP
     -- ** Streaming
   , stream
     -- ** Noting specific elements
@@ -143,6 +144,15 @@ dynamic = lift . Hole DoEscape
 {-# INLINE dynamicRaw #-}
 dynamicRaw :: p -> Markup p ()
 dynamicRaw = lift . Hole Don'tEscape
+
+-- | Map over the holes in a 'Markup'. This necessarily discards any attributes
+-- currently being added that are not static.
+mapP :: (a -> b) -> Markup a r -> Markup b r
+mapP f (Markup m) = Markup $ \i attr -> case m i (foldr addA [] attr) of
+  ms -> ms { msChildren = \cs -> map (fmap f) (msChildren ms []) ++ cs }
+  where
+    addA ((:=) a b) xs = (a := b) : xs
+    addA _          xs = xs
 
 instance a ~ () => IsString (Markup t a) where
   fromString = text . fromString
