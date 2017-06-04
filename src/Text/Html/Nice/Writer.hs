@@ -31,6 +31,7 @@ module Text.Html.Nice.Writer
   , (!)
   , dynamic
   , dynamicRaw
+  , using
   , sub
     -- ** Streaming
   , stream
