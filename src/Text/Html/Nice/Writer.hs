@@ -130,7 +130,7 @@ doctype_ = lift Doctype
 --------------------------------------------------------------------------------
 -- Node types
 
-using :: ToFastMarkup a => (a -> b) -> Markup (a -> FastMarkup r) ()
+using :: ToFastMarkup b => (a -> b) -> Markup (a -> FastMarkup r) ()
 using f = dynamic (toFastMarkup . f)
 
 {-# INLINE dynamic #-}
