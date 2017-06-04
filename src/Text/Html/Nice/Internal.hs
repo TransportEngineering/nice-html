@@ -17,9 +17,11 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE UndecidableInstances       #-}
 module Text.Html.Nice.Internal where
 import           Control.DeepSeq                  (NFData (..))
 import           Control.Monad
+import           Control.Monad.Trans.Reader       (ReaderT (..))
 import           Control.Monad.Trans.State.Strict (evalState, get, modify')
 import           Data.Bifunctor.TH
 import           Data.Functor.Foldable.TH
@@ -364,6 +366,11 @@ render = runIdentity . renderM absurd
 
 class Render a m where
   r :: a -> m TLB.Builder
+
+-- needs undecidableinstances ...
+instance (Render b m, m' ~ ReaderT a m) => Render (a -> b) m' where
+  {-# INLINE r #-}
+  r f = ReaderT (\a -> r (f a))
 
 -- | Defer application of an argument to rendering
 instance (Monad m, Render b m) => Render (a :$ b) m where
