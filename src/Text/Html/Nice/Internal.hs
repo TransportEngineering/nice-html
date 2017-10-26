@@ -303,7 +303,9 @@ renderM f = go
       FBuilder t  -> return t
       FSText t    -> return (TLB.fromText t)
       FLText t    -> return (TLB.fromLazyText t)
-      FHole _ a   -> f a
+      FHole esc a -> case esc of
+        DoEscape    -> Blaze.renderMarkupBuilder . Blaze.textBuilder <$> f a
+        Don'tEscape -> f a
       FStream str -> unstream go str (liftM2 mappend) (return mempty)
       FDeep   a   -> renderM go a
       _           -> return mempty
