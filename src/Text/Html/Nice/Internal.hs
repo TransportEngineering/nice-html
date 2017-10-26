@@ -293,13 +293,13 @@ unlayer = FDeep
                      -> Identity TLB.Builder
   #-}
 
-{-# INLINABLE renderM #-}
+{-# INLINE renderM #-}
 -- | Render 'FastMarkup'
 renderM :: Monad m => (a -> m TLB.Builder) -> FastMarkup a -> m TLB.Builder
 renderM f = go
   where
     go fm = case fm of
-      Bunch v     -> V.foldM (\a b -> return (a <> b)) mempty =<< V.mapM go v
+      Bunch v     -> V.foldM (\acc x -> mappend acc <$> go x) mempty v
       FBuilder t  -> return t
       FSText t    -> return (TLB.fromText t)
       FLText t    -> return (TLB.fromLazyText t)
