@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fprof -fprof-auto-all #-}
+-- with stack, compile this with --profile --benchmark-arguments '+RTS -p'
 import qualified BigTable.Nice as Nice
 import qualified Weigh         as Mem
 
