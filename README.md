@@ -98,15 +98,12 @@ Case         Allocated  GCs
 1000/nice   29,500,096   57
 1000/lucid  18,071,008   32
 Benchmark mem: FINISH
-Benchmark perf: RUNNING...
-OK: nice = blaze
-OK: nice = lucid
-OK: lucid = blaze
 ```
 
 ### Runtime
 
 ```
+Benchmark perf: RUNNING...
 benchmarking 10/blaze
 time                 80.13 μs   (79.59 μs .. 80.73 μs)
                      1.000 R²   (1.000 R² .. 1.000 R²)
