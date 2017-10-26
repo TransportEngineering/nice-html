@@ -184,7 +184,7 @@ stream :: Foldable f
        => Markup (a -> n) r
        -> Markup (f a -> FastMarkup n) r
 stream m =
-  result <$ dynamic (\fa -> FStream (ListS (toList fa) fm))
+  result <$ dynamicRaw (\fa -> FStream (ListS (toList fa) fm))
   where
     (result, !fm) = runMarkup m
 
