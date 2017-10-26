@@ -22,7 +22,6 @@ module Text.Html.Nice.Internal where
 import           Control.DeepSeq                  (NFData (..))
 import           Control.Monad
 import           Control.Monad.Trans.Reader       (ReaderT (..))
-import           Control.Monad.Trans.State.Strict (evalState, get, modify')
 import           Data.Bifunctor.TH
 import           Data.Functor.Foldable.TH
 import           Data.Functor.Identity
@@ -70,15 +69,12 @@ data Markup' a
   | Text !IsEscaped !SomeText
   | Hole !IsEscaped a
   | Empty
-  deriving (Show, Eq, Functor, Foldable, Traversable)
+  deriving (Show, Eq, Functor, Foldable) {- , Traversable) -}
 
-data Stream a
-  = forall s. ListS [s] (FastMarkup (s -> a))
-  | S [FastMarkup a]
+data Stream a = forall s. ListS [s] !(FastMarkup (s -> a))
 
 instance Show a => Show (Stream a) where
   show (ListS s f) = "(Stream (" ++ show (map (\a -> fmap ($ a) f) s) ++ "))"
-  show (S fm) = "(S " ++ show fm ++ ")"
 
 -- | Don't use this! It's a lie!
 instance Eq (Stream a) where
@@ -86,29 +82,17 @@ instance Eq (Stream a) where
 
 instance Functor Stream where
   fmap f (ListS l g) = ListS l (fmap (fmap f) g)
-  fmap f (S x) = S (fmap (fmap f) x)
 
 instance Foldable Stream where
   foldMap f s = unstream (foldMap f) s mappend mempty
 
 instance NFData a => NFData (Stream a) where
   rnf (ListS !_ !s) = rnf s
-  rnf (S fm) = rnf fm
 
 {-# INLINE unstream #-}
 unstream :: (FastMarkup a -> b) -> Stream a -> (b -> c -> c) -> c -> c
-unstream f (ListS l fm) cons nil = go l
-  where
-    go (x:xs) = cons (f (fmap ($ x) fm)) (go xs)
-    go []     = nil
-unstream f (S l) cons nil = go l
-  where
-    go (x:xs) = cons (f x) (go xs)
-    go []     = nil
-
-instance Traversable Stream where
-  -- phew ...
-  traverse f str = S <$> sequenceA (unstream (traverse f) str (:) [])
+unstream f (ListS l fm) cons nil =
+  foldr (\x -> cons (f (fmap ($ x) fm))) nil l
 
 --------------------------------------------------------------------------------
 -- Compiling
@@ -123,14 +107,16 @@ instance Show a => Show (a :$ b) where
 
 data FastMarkup a
   = Bunch {-# UNPACK #-} !(Vector (FastMarkup a))
-  | FStream (Stream a)
+    -- could unpack this manually but would then have to also write
+    -- Show/Eq/Functor/Foldable manually
+  | FStream !(Stream a)
   | FLText TL.Text
   | FSText {-# UNPACK #-} !Text
   | FBuilder !TLB.Builder
   | FHole !IsEscaped !a
   | FDeep (FastMarkup (FastMarkup a))
   | FEmpty
-  deriving (Show, Eq, Functor, Foldable, Traversable, Generic)
+  deriving (Show, Eq, Functor, Foldable, Generic)
 
 instance Monoid (FastMarkup a) where
   mempty = FBuilder mempty
@@ -255,22 +241,10 @@ munch v = V.fromList (go mempty 0)
           Nothing -> FBuilder acc : e : go mempty (i + 1)
       | otherwise = [FBuilder acc]
 
-data EqHack a = EqHack {-# UNPACK #-} !Int a
-
-instance Eq (EqHack a) where
-  EqHack i _ == EqHack j _ = i == j
-
--- | Tag everything in a 'Traversable' with a number
-eqHack :: Traversable f => f a -> f (EqHack a)
-eqHack = (`evalState` 0) . traverse (\x -> do
-  i <- get
-  modify' (+ 1)
-  return (EqHack i x))
-
 -- | Recursively flatten 'FastMarkup' until doing so does nothing
 flatten :: FastMarkup a -> FastMarkup a
 flatten fm = case fm of
-  FStream t -> FStream t
+  FStream t -> FStream t -- ignore streams
   _         -> go
 
   where
@@ -289,7 +263,8 @@ flatten fm = case fm of
       _ -> runIdentity (plateFM (Identity . flatten) fm)
 
     again a
-      | eqHack a == eqHack fm = fm
+      -- Eq but ignore holes
+      | (() <$ a) == (() <$ fm) = fm
       | otherwise = flatten a
 
 -- | Run all Text builders
