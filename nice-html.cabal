@@ -64,9 +64,32 @@ benchmark mem
     , nice-html
     , weigh
     , pretty-show
+    , deepseq
   other-modules:
       BigTable.Blaze
       BigTable.Lucid
+      BigTable.Nice
+  default-language: Haskell2010
+
+benchmark mem-prof
+  type: exitcode-stdio-1.0
+  main-is: MemProf.hs
+  hs-source-dirs:
+      benchmarks
+  ghc-options: -Wall -O2 -prof -fprof-auto
+  build-depends:
+      base == 4.9.*
+    , criterion
+    , blaze-markup
+    , blaze-html
+    , lucid
+    , text
+    , bytestring
+    , nice-html
+    , weigh
+    , pretty-show
+    , deepseq
+  other-modules:
       BigTable.Nice
   default-language: Haskell2010
 
@@ -87,6 +110,7 @@ benchmark perf
     , nice-html
     , weigh
     , pretty-show
+    , deepseq
   other-modules:
       BigTable.Blaze
       BigTable.Lucid
