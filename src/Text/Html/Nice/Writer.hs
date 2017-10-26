@@ -10,7 +10,6 @@
 {-# LANGUAGE OverloadedLabels       #-}
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TemplateHaskell        #-}
 {-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators          #-}

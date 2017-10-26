@@ -326,7 +326,7 @@ class Render a m where
 -- needs undecidableinstances ...
 instance (Render b m, m' ~ ReaderT a m) => Render (a -> b) m' where
   {-# INLINE r #-}
-  r f = ReaderT (\a -> r (f a))
+  r f = ReaderT (r . f)
 
 -- | Defer application of an argument to rendering
 instance (Monad m, Render b m) => Render (a :$ b) m where
@@ -341,9 +341,23 @@ instance Monad m => Render TLB.Builder m where
   {-# INLINE r #-}
   r = return
 
+instance Monad m => Render T.Text m where
+  {-# INLINE r #-}
+  r = return . TLB.fromText
+
+instance Monad m => Render TL.Text m where
+  {-# INLINE r #-}
+  r = return . TLB.fromLazyText
+
 instance {-# OVERLAPPABLE #-} (Render a m, Monad m) => Render (FastMarkup a) m where
   {-# INLINE r #-}
   r = renderM r
+
+newtype RenderToFastMarkup a = RenderToFastMarkup { unToFastMarkup :: a }
+
+instance (ToFastMarkup a, Monad m) => Render (RenderToFastMarkup a) m where
+  {-# INLINE r #-}
+  r = r . (toFastMarkup :: a -> FastMarkup Void) . unToFastMarkup
 
 --------------------------------------------------------------------------------
 
