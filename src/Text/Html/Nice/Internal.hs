@@ -110,12 +110,12 @@ data FastMarkup a
     -- could unpack this manually but would then have to also write
     -- Show/Eq/Functor/Foldable manually
   | FStream !(Stream a)
+  | FHole !IsEscaped !a
   | FLText TL.Text
   | FSText {-# UNPACK #-} !Text
   | FBuilder !TLB.Builder
-  | FHole !IsEscaped !a
-  | FDeep (FastMarkup (FastMarkup a))
   | FEmpty
+  | FDeep (FastMarkup (FastMarkup a))
   deriving (Show, Eq, Functor, Foldable, Generic)
 
 instance Monoid (FastMarkup a) where
@@ -124,12 +124,12 @@ instance Monoid (FastMarkup a) where
 
 instance NFData a => NFData (FastMarkup a) where
   rnf f = case f of
-    Bunch v -> rnf v
-    FStream s -> rnf s
-    FLText t -> rnf t
-    FSText t -> rnf t
+    Bunch v    -> rnf v
+    FStream s  -> rnf s
+    FLText t   -> rnf t
+    FSText t   -> rnf t
     FHole !_ a -> rnf a
-    _ -> ()
+    _          -> ()
 
 makeBaseFunctor ''Markup'
 deriveBifunctor ''Markup'F
