@@ -168,7 +168,7 @@ instance Bifunctor Markup where
 -- @ 'attr' #x [a,b,c] = 'node' "x" [a,b,c] @
 --
 attr :: MakeNode n a -> [Attr n] -> Markup n a
-attr (N f) a = f a
+attr (N f) = f
 
 runMarkup :: Markup n a -> Markup' n
 runMarkup h = runF (unMarkup h) (const Empty) F.embed
@@ -229,7 +229,7 @@ sub x = liftF (HoleF Don'tEscape (compile x))
 -- | Insert a sub-template.
 {-# INLINE embed #-}
 embed :: (t -> FastMarkup n) -> Markup (t -> FastMarkup n) a
-embed f = dynamic f
+embed = dynamic
 
 {-# INLINE stream #-}
 stream :: Foldable f
