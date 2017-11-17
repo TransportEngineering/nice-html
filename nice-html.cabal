@@ -33,10 +33,12 @@ library
     , template-haskell >= 2.11
     , blaze-markup >= 0.5
     , recursion-schemes >= 5.0.1
+    , containers >= 0.5
     , transformers
     , free >= 4.5
     , bifunctors >= 5.1
     , data-default-class
+    , lens >= 4.15
   exposed-modules:
       Text.Html.Nice
       Text.Html.Nice.Internal

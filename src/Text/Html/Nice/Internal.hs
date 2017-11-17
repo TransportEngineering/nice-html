@@ -68,6 +68,7 @@ data Markup' a
   | Stream (Stream a)
   | Text !IsEscaped !SomeText
   | Hole !IsEscaped a
+  | Precompiled !(FastMarkup a)
   | Empty
   deriving (Show, Eq, Functor, Foldable) {- , Traversable) -}
 
@@ -217,6 +218,7 @@ fast m = case m of
   Hole e v -> FHole e v
   Stream a -> FStream a
   Empty -> FEmpty
+  Precompiled fm -> fm
 
 -- | Look for an immediate string-like term and render that
 immediateRender :: FastMarkup a -> Maybe TLB.Builder
@@ -320,6 +322,10 @@ renderMs f = renderM (f >=> renderMs (f . absurd))
 render :: FastMarkup Void -> TLB.Builder
 render = runIdentity . renderM absurd
 
+{-# INLINE r_ #-}
+r_ :: Render a Identity => a -> TLB.Builder
+r_ = runIdentity . r
+
 class Render a m where
   r :: a -> m TLB.Builder
 
@@ -363,6 +369,9 @@ instance (ToFastMarkup a, Monad m) => Render (RenderToFastMarkup a) m where
 
 class ToFastMarkup a where
   toFastMarkup :: a -> FastMarkup b
+
+instance ToFastMarkup (FastMarkup Void) where
+  toFastMarkup = vacuous
 
 instance ToFastMarkup Text where
   {-# INLINE toFastMarkup #-}

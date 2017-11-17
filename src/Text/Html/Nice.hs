@@ -8,6 +8,7 @@ module Text.Html.Nice
     -- * Rendering
   , FastMarkup
   , Render (..)
+  , r_
   , (:$) (..)
   , renderM
   , renderMs
@@ -17,7 +18,7 @@ module Text.Html.Nice
   , unlayer
   ) where
 import           Text.Html.Nice.Internal     ((:$) (..), Attr (..), FastMarkup,
-                                              Render (..), recompile, render,
+                                              Render (..), r_, recompile, render,
                                               renderM, renderMs, unlayer)
 import           Text.Html.Nice.Writer
 import           Text.Html.Nice.Writer.Html5
