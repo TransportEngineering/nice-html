@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- derived from https://github.com/jaspervdj/blaze-markup/blob/master/benchmarks/bigtable/html.hs
 module BigTable.Blaze where
 import           Criterion.Main                (Benchmark, bench, nf)
 import           Data.Text.Lazy                (Text)
@@ -34,9 +35,9 @@ bigTable t = renderHtml $ do
   p "i am gref at lots of static data\n"
   p "i am greg at lots of static data\n"
   where
-    row r = tr (mapM_ (\t -> do
+    row r = tr (mapM_ (\t -> td $ do
                           p "hi!\n"
-                          td (toHtml t)
+                          toHtml t
                           p "hello!\n") r)
 
 benchmark :: [[Int]] -> Benchmark

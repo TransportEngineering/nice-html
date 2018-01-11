@@ -1,9 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- derived from https://github.com/jaspervdj/blaze-markup/blob/master/benchmarks/bigtable/html.h
 module BigTable.Nice where
-import           Criterion.Main        (Benchmark, bench, nf)
-import           Data.Functor.Identity
+import           Control.Monad.Trans.Reader (runReader)
+import           Criterion.Main             (Benchmark, bench, nf)
+import           Data.Text.Lazy             (Text)
+import           Data.Text.Lazy.Builder     (Builder, toLazyText)
+import           Data.Text.Lazy.Builder.Int (decimal)
+import           Weigh                      (Weigh, func)
+
 import           Text.Html.Nice
-import           Weigh                 (Weigh, func)
 
 rows :: FastMarkup ([[Int]] -> FastMarkup (FastMarkup Builder))
 rows = compile $ do
@@ -34,8 +39,7 @@ rows = compile $ do
   p_ "i am greg at lots of static data\n"
 
 bigTable :: [[Int]] -> Text
-bigTable table =
-  toLazyText (runIdentity (r (rows :$ table)))
+bigTable table = toLazyText (r rows `runReader` table)
 
 benchmark :: [[Int]] -> Benchmark
 benchmark t = bench "nice" (bigTable `nf` t)

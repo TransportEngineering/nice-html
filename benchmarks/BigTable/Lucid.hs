@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- derived from https://github.com/jaspervdj/blaze-markup/blob/master/benchmarks/bigtable/html.h
 module BigTable.Lucid where
 import           Criterion.Main (Benchmark, bench, nf)
 import           Data.Text.Lazy (Text)
@@ -39,9 +40,9 @@ bigTable t = renderText $ do
 
   where
     row :: [Int] -> Html ()
-    row r = tr_ (mapM_ (\t -> do
+    row r = tr_ (mapM_ (\t -> td_ $ do
                           p_ "hi!\n"
-                          td_ (toHtml (show t))
+                          toHtml (show t)
                           p_ "hello!\n") r)
 
 benchmark :: [[Int]] -> Benchmark
