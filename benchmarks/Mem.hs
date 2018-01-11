@@ -12,7 +12,7 @@ rows i = replicate i [1..10]
 
 main :: IO ()
 main = do
-
+{-
   -- Sanity checks
   let
     check l f g =
@@ -31,6 +31,7 @@ main = do
   check "nice = blaze" Nice.bigTable Blaze.bigTable
   check "nice = lucid" Nice.bigTable Lucid.bigTable
   check "lucid = blaze" Lucid.bigTable Blaze.bigTable
+-}
 
   Mem.mainWith $ forM_ [10, 100, 1000] $ \i -> do
     let table = rows i
