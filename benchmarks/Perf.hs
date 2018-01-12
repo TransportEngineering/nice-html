@@ -1,9 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
-import qualified BigTable.Blaze      as Blaze
-import qualified BigTable.Lucid      as Lucid
-import qualified BigTable.Nice       as Nice
-import qualified Criterion.Main      as Perf
-import qualified Data.Text.Lazy.IO   as T
+import qualified BigTable.Blaze    as Blaze
+import qualified BigTable.Hamlet   as Hamlet
+import qualified BigTable.Lucid    as Lucid
+import qualified BigTable.Nice     as Nice
+import qualified Criterion.Main    as Perf
+import qualified Data.Text.Lazy.IO as T
 
 {-# NOINLINE rows #-}
 rows :: Int -> [[Int]]
@@ -11,7 +12,6 @@ rows i = replicate i [1..10]
 
 main :: IO ()
 main = do
-{-
   -- Sanity checks
   let
     check l f g =
@@ -29,14 +29,15 @@ main = do
 
   check "nice = blaze" Nice.bigTable Blaze.bigTable
   check "nice = lucid" Nice.bigTable Lucid.bigTable
+  check "nice = hamlet" Nice.bigTable Hamlet.bigTable
   check "lucid = blaze" Lucid.bigTable Blaze.bigTable
--}
 
   Perf.defaultMain
     [ Perf.bgroup (show i)
       [ Blaze.benchmark (rows i)
       , Nice.benchmark (rows i)
       , Lucid.benchmark (rows i)
+      , Hamlet.benchmark (rows i)
       ]
     | i <- [10, 100, 1000]
     ]

@@ -113,8 +113,10 @@ benchmark perf
     , weigh
     , pretty-show
     , transformers
+    , shakespeare
   other-modules:
       BigTable.Blaze
       BigTable.Lucid
       BigTable.Nice
+      BigTable.Hamlet
   default-language: Haskell2010
