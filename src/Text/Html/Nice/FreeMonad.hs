@@ -154,12 +154,20 @@ instance IsList (Markup n a) where
   toList _ = error "haha, fooled you, Markup has no toList"
 
 instance (a ~ (), KnownSymbol s) => IsLabel s (Markup n a) where
+#if __GLASGOW_HASKELL__ >= 802
   fromLabel = node (fromString (symbolVal (Proxy :: Proxy s))) []
+#else
+  fromLabel p = node (fromString (symbolVal p)) []
+#endif
 
 newtype MakeNode n a = N ([Attr n] -> Markup n a)
 
 instance (a ~ (), KnownSymbol s) => IsLabel s (MakeNode n a) where
+#if __GLASGOW_HASKELL__ >= 802
   fromLabel = N (node (fromString (symbolVal (Proxy :: Proxy s))))
+#else
+  fromLabel p = N (node (fromString (symbolVal p)))
+#endif
 
 instance Bifunctor Markup where
   first f = Markup . hoistF (first f) . unMarkup
