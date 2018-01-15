@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -97,7 +98,9 @@ import           Data.Default.Class
 import           Data.Foldable                    as F
 import qualified Data.Functor.Foldable            as F
 import           Data.Functor.Identity
+#if __GLASGOW_HASKELL__ >= 802
 import           Data.Proxy                       (Proxy (..))
+#endif
 import           Data.String                      (IsString (..))
 import           Data.Text                        (Text)
 import qualified Data.Text.Lazy                   as TL
@@ -108,7 +111,11 @@ import qualified Data.Vector                      as V
 import           Data.Void
 import           GHC.Exts                         (IsList (..))
 import           GHC.OverloadedLabels             (IsLabel (..))
+#if __GLASGOW_HASKELL__ >= 802
 import           GHC.TypeLits                     (KnownSymbol, symbolVal)
+#else
+import           GHC.TypeLits                     (KnownSymbol, symbolVal')
+#endif
 import           Text.Html.Nice.Internal
 
 -- | 'Markup' is a free monad based on the base functor to 'Markup\'F'
@@ -157,7 +164,7 @@ instance (a ~ (), KnownSymbol s) => IsLabel s (Markup n a) where
 #if __GLASGOW_HASKELL__ >= 802
   fromLabel = node (fromString (symbolVal (Proxy :: Proxy s))) []
 #else
-  fromLabel p = node (fromString (symbolVal p)) []
+  fromLabel p = node (fromString (symbolVal' p)) []
 #endif
 
 newtype MakeNode n a = N ([Attr n] -> Markup n a)
@@ -166,7 +173,7 @@ instance (a ~ (), KnownSymbol s) => IsLabel s (MakeNode n a) where
 #if __GLASGOW_HASKELL__ >= 802
   fromLabel = N (node (fromString (symbolVal (Proxy :: Proxy s))))
 #else
-  fromLabel p = N (node (fromString (symbolVal p)))
+  fromLabel p = N (node (fromString (symbolVal' p)))
 #endif
 
 instance Bifunctor Markup where
