@@ -9,6 +9,7 @@
 {-# LANGUAGE OverloadedLists            #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeFamilyDependencies     #-}
 {-# LANGUAGE TypeOperators              #-}
@@ -96,6 +97,7 @@ import           Data.Default.Class
 import           Data.Foldable                    as F
 import qualified Data.Functor.Foldable            as F
 import           Data.Functor.Identity
+import           Data.Proxy                       (Proxy (..))
 import           Data.String                      (IsString (..))
 import           Data.Text                        (Text)
 import qualified Data.Text.Lazy                   as TL
@@ -106,7 +108,7 @@ import qualified Data.Vector                      as V
 import           Data.Void
 import           GHC.Exts                         (IsList (..))
 import           GHC.OverloadedLabels             (IsLabel (..))
-import           GHC.TypeLits                     (KnownSymbol, symbolVal')
+import           GHC.TypeLits                     (KnownSymbol, symbolVal)
 import           Text.Html.Nice.Internal
 
 -- | 'Markup' is a free monad based on the base functor to 'Markup\'F'
@@ -152,12 +154,12 @@ instance IsList (Markup n a) where
   toList _ = error "haha, fooled you, Markup has no toList"
 
 instance (a ~ (), KnownSymbol s) => IsLabel s (Markup n a) where
-  fromLabel p = node (fromString (symbolVal' p)) []
+  fromLabel = node (fromString (symbolVal (Proxy :: Proxy s))) []
 
 newtype MakeNode n a = N ([Attr n] -> Markup n a)
 
 instance (a ~ (), KnownSymbol s) => IsLabel s (MakeNode n a) where
-  fromLabel p = N (node (fromString (symbolVal' p)))
+  fromLabel = N (node (fromString (symbolVal (Proxy :: Proxy s))))
 
 instance Bifunctor Markup where
   first f = Markup . hoistF (first f) . unMarkup
