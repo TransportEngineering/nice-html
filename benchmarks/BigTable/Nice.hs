@@ -24,9 +24,9 @@ rows = compile $ do
   p_ "i am greg at lots of static data\n"
   table_ $ do
     thead_ . tr_ . mapM_ (th_ . builder . decimal) $ [1..10 :: Int]
-    tbody_ . stream . tr_ . stream $ do
+    tbody_ . stream . tr_ . stream . td_ $ do
       p_ "hi!\n"
-      td_ (dynamic decimal)
+      dynamic decimal
       p_ "hello!\n"
   p_ "i am good at lots of static data\n"
   p_ "i am glab at lots of static data\n"
